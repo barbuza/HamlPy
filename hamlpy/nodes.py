@@ -10,6 +10,8 @@ from pygments.lexers import guess_lexer
 
 from markdown import markdown
 
+import coffeescript
+
 ELEMENT = '%'
 ID = '#'
 CLASS = '.'
@@ -519,9 +521,11 @@ class JavascriptFilterNode(FilterNode):
 
 class CoffeeScriptFilterNode(FilterNode):
     def _render(self):
-        self.before = '<script type=\'text/coffeescript\'>\n#<![CDATA[%s' % (self.render_newlines())
-        self.after = '#]]>\n</script>\n'
-        self._render_children_as_plain_text(remove_indentation=False)
+        indent_offset = len(self.children[0].spaces)
+        code = "\n".join([node.raw_haml[indent_offset:] for node in self.children]) + '\n'
+        js = coffeescript.compile(code)
+        self.before = '<script type=\'text/javascript\'>\n// <![CDATA[%s%s' % (self.render_newlines(), js)
+        self.after = '// ]]>\n</script>\n'
 
 class CssFilterNode(FilterNode):
     def _render(self):
