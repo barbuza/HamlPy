@@ -118,9 +118,9 @@ class Element(object):
                 # means `attrname` will present only if `condition` evaluates to `True`
                 # or `False` for unless case
                 # useful for attributes like "checked", "required" etc
-                conditional_matches = re.findall(r"([\w-]+)\:\s*(if|unless)\(\s*([\w=\s\.]+?)\s*\)", attribute_dict_string)
+                conditional_matches = re.findall(r"[,\{]\s*([\w-]+)\:\s*(if|unless)\(\s*([\w=\s\.]+?)\s*\)", attribute_dict_string)
                 # remove conditional matches from attribute string
-                attribute_dict_string = re.sub(r"[\w-]+\:\s*(?:if|unless)\(\s*[\w=\s\.]+?\s*\)\s*,?", "", attribute_dict_string)
+                attribute_dict_string = re.sub(r"([,\{])\s*[\w-]+\:\s*(?:if|unless)\(\s*[\w=\s\.]+?\s*\)\s*,?", "\\1", attribute_dict_string)
 
                 # grab conditional presence attributes
                 # conditional presence is:
@@ -129,18 +129,18 @@ class Element(object):
                 # means `attrname` will present and have `value` only if `condition` evaluates to `True`
                 # of `False` for unless case
                 # useful for adding "class" and "id"
-                conditional_presence_matches = re.findall(r"([\w-]+)\:\s*(if|unless)\(\s*([\w=\s\.]+?)\s*,\s*(.+?)\s*\)", attribute_dict_string)
+                conditional_presence_matches = re.findall(r"[,\{]\s*([\w-]+)\:\s*(if|unless)\(\s*([\w=\s\.]+?)\s*,\s*(.+?)\s*\)", attribute_dict_string)
                 # remove conditional presence matches from attribute string
-                attribute_dict_string = re.sub(r"[\w-]+\:\s*(?:if|unless)\(\s*[\w=\s\.]+\s*,\s*.+?\s*\)\s*,?", "", attribute_dict_string)
+                attribute_dict_string = re.sub(r"([,\{])\s*[\w-]+\:\s*(?:if|unless)\(\s*[\w=\s\.]+\s*,\s*.+?\s*\)\s*,?", "\\1", attribute_dict_string)
 
                 # grab tag call attributes
                 # tag call attribute is:
                 #   attrname: tagname(arguments)
                 # will render to attrname='{% tagname arguments %}'
                 # useful for "href" attributes
-                tag_call_matches = re.findall(r"([\w-]+)\:\s*(\w+)\(\s*(.+?)\s*\)", attribute_dict_string)
+                tag_call_matches = re.findall(r"[,\{]\s*([\w-]+)\:\s*(\w+)\(\s*(.+?)\s*\)\s*[\},]", attribute_dict_string)
                 # remove tag call matches from attribute string
-                attribute_dict_string = re.sub(r"([\w-]+)\:\s*(\w+)\(\s*(.+?)\s*\)\s*,?", "", attribute_dict_string)
+                attribute_dict_string = re.sub(r"([,\{])\s*[\w-]+\:\s*\w+\(\s*.+?\s*\)\s*,?", "\\1", attribute_dict_string)
 
                 # converting all allowed attributes to python dictionary style
 
@@ -213,7 +213,7 @@ class Element(object):
                             raise Exception('multiple values are allowed only for `class`')
                         if not self.attributes.endswith(" "):
                             self.attributes += " "
-                        self.attributes = "%s='%s'" % (attrname, value)
+                        self.attributes += "%s='%s'" % (attrname, value)
 
                 self.attributes = self.attributes.strip()
             except Exception, e:
