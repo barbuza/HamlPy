@@ -110,13 +110,26 @@ class Element(object):
         if (attribute_dict_string):
             attribute_dict_string = attribute_dict_string.replace('\n', ' ')
             try:
+
+                # grab conditional attributes
+                # conditional match is:
+                #  attrname: if(condition)
+                #  attrname: unless(condition)
+                # means `attrname` will present only if `condition` evaluates to `True`
+                # or `False` for unless case
+                # useful for attributes like "checked", "required" etc
+                conditional_matches = re.findall(r"([\w-]+)\:\s*(if|unless)\(\s*([\w\.]+)\s*\)", attribute_dict_string)
+                # remove conditional matches from attrubute string
+                attribute_dict_string = re.sub(r"[\w-]+\:\s*(?:if|unless)\(\s*[\w\.]+\s*\)\s*,?", "", attribute_dict_string)
+
                 # converting all allowed attributes to python dictionary style
-  
+
                 # Replace Ruby-style HAML with Python style
                 attribute_dict_string = re.sub(self.RUBY_HAML_REGEX, '"\g<key>":',attribute_dict_string)
                 # Put double quotes around key
                 attribute_dict_string = re.sub(self.ATTRIBUTE_REGEX, '\g<pre>"\g<key>":\g<val>', attribute_dict_string)
                 # Parse string as dictionary
+
                 attributes_dict = eval(attribute_dict_string)
                 for k, v in attributes_dict.items():
                     if k != 'id' and k != 'class':
@@ -135,6 +148,13 @@ class Element(object):
                             attributes_dict[k] = v
                             v = v.decode('utf-8')
                             self.attributes += "%s='%s' " % (k, self._escape_attribute_quotes(v))
+
+                # append conditional attributes
+                for attrname, check_type, condition in conditional_matches:
+                    if check_type == "unless":
+                        check_type = "if not"
+                    self.attributes += "{%% %s %s %%} %s{%% endif %%}" % (check_type, condition, attrname)
+
                 self.attributes = self.attributes.strip()
             except Exception, e:
                 raise Exception('failed to decode: %s'%attribute_dict_string)
