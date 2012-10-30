@@ -124,6 +124,8 @@ class Element(object):
         return ''.join(escaped)
 
     def _parse_attribute_dictionary(self, attribute_dict_string):
+        if isinstance(attribute_dict_string, unicode):
+            attribute_dict_string = attribute_dict_string.encode("utf-8")
         attributes_dict = {}
         if (attribute_dict_string):
             attribute_dict_string = attribute_dict_string.replace('\n', ' ')
