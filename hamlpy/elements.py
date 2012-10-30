@@ -118,10 +118,20 @@ class Element(object):
                 # means `attrname` will present only if `condition` evaluates to `True`
                 # or `False` for unless case
                 # useful for attributes like "checked", "required" etc
-                conditional_matches = re.findall(r"([\w-]+)\:\s*(if|unless)\(\s*([\w\.]+)\s*\)", attribute_dict_string)
-                # remove conditional matches from attrubute string
-                attribute_dict_string = re.sub(r"[\w-]+\:\s*(?:if|unless)\(\s*[\w\.]+\s*\)\s*,?", "", attribute_dict_string)
+                conditional_matches = re.findall(r"([\w-]+)\:\s*(if|unless)\(\s*([\w=\s\.]+?)\s*\)", attribute_dict_string)
+                # remove conditional matches from attribute string
+                attribute_dict_string = re.sub(r"[\w-]+\:\s*(?:if|unless)\(\s*[\w=\s\.]+?\s*\)\s*,?", "", attribute_dict_string)
 
+                # grab conditional presence attributes
+                # conditional presence is:
+                # attrname: if(condition, value)
+                # means `attrname` will present and have `value` only if `condition` evaluates to `True`
+                # of `False` for unless case
+                # useful for adding "class" and "id"
+                conditional_presence_matches = re.findall(r"([\w-]+)\:\s*(if|unless)\(\s*([\w=\s\.]+?)\s*,\s*(.+?)\s*\)", attribute_dict_string)
+                # remove conditional presence matches from attribute string
+                attribute_dict_string = re.sub(r"[\w-]+\:\s*(?:if|unless)\(\s*[\w=\s\.]+\s*,\s*.+?\s*\)\s*,?", "", attribute_dict_string)
+                
                 # converting all allowed attributes to python dictionary style
 
                 # Replace Ruby-style HAML with Python style
@@ -155,6 +165,30 @@ class Element(object):
                         check_type = "if not"
                     self.attributes += "{%% %s %s %%} %s{%% endif %%}" % (check_type, condition, attrname)
 
+                # append conditional presence attributes
+                for attrname, check_type, condition, value in conditional_presence_matches:
+                    if check_type == "unless":
+                        check_type = "if not"
+                    if re.compile(r"^'.+?'$", re.U).match(value) or re.compile(r'^".+?"$', re.U).match(value):
+                        value = self._escape_attribute_quotes(value[1:-1])
+                    else:
+                        value = "#{%s}" % value # value is variable
+                    if attrname == "class":
+                        previous_value = attributes_dict.get("class")
+                        if previous_value:
+                            attributes_dict["class"] = "%s{%% %s %s %%} %s{%% endif %%}" % (previous_value, check_type, condition, value)
+                        else:
+                            attributes_dict["class"] = "{%% %s %s %%}%s{%% endif %%}" % (check_type, condition, value)
+                    else:
+                        if attributes_dict.get(attrname):
+                            raise Exception('multiple values are allowed only for `class`')
+                        if attrname == "id":
+                            attributes_dict[attrname] = "{%% %s %s %%}%s{%% endif %%}" % (check_type, condition, value)
+                        else:
+                            if not self.attributes.endswith(" "):
+                                self.attributes += " "
+                            self.attributes += "{%% %s %s %%}%s='%s'{%% endif %%}" % (check_type, condition, attrname, value)
+                    
                 self.attributes = self.attributes.strip()
             except Exception, e:
                 raise Exception('failed to decode: %s'%attribute_dict_string)
