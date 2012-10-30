@@ -2,6 +2,24 @@ import re
 import sys
 from types import NoneType
 
+
+class ObjectHack(object):
+    
+    def __init__(self, name):
+        self._name = name
+    
+    def __getattr__(self, name):
+        return ObjectHack("%s.%s" % (self._name, name))
+
+    def __repr__(self):
+        return "<ObjectHack %s>" % self._name
+
+class LocalsHack(dict):
+
+    def __getitem__(self, name):
+        return ObjectHack(name)
+
+
 class Element(object):
     """contains the pieces of an element and can populate itself from haml element text"""
     
@@ -150,22 +168,20 @@ class Element(object):
                 attribute_dict_string = re.sub(self.ATTRIBUTE_REGEX, '\g<pre>"\g<key>":\g<val>', attribute_dict_string)
                 # Parse string as dictionary
 
-                attributes_dict = eval(attribute_dict_string)
+                # use hacked locals to allow literal django variables as values
+                attributes_dict = eval(attribute_dict_string, LocalsHack())
                 for k, v in attributes_dict.items():
+                    if isinstance(k, ObjectHack):
+                        k = k._name # we assume non-variable keys
+                    if isinstance(v, ObjectHack):
+                        v = '#{%s}' % v._name
+                    attributes_dict[k] = v
                     if k != 'id' and k != 'class':
                         if isinstance(v, NoneType):
                             self.attributes += "%s " % (k,)
                         elif isinstance(v, int) or isinstance(v, float):
                             self.attributes += "%s='%s' " % (k, v)
                         else:
-                            # DEPRECATED: Replace variable in attributes (e.g. "= somevar") with Django version ("{{somevar}}")
-                            v = re.sub(self.DJANGO_VARIABLE_REGEX, '{{\g<variable>}}', attributes_dict[k])
-                            if v != attributes_dict[k]:
-                                sys.stderr.write("\n---------------------\nDEPRECATION WARNING: %s" % self.haml.lstrip() + \
-                                                 "\nThe Django attribute variable feature is deprecated and may be removed in future versions." +
-                                                 "\nPlease use inline variables ={...} instead.\n-------------------\n")
-                                
-                            attributes_dict[k] = v
                             v = v.decode('utf-8')
                             self.attributes += "%s='%s' " % (k, self._escape_attribute_quotes(v))
 
@@ -218,10 +234,5 @@ class Element(object):
                 self.attributes = self.attributes.strip()
             except Exception, e:
                 raise Exception('failed to decode: %s'%attribute_dict_string)
-                #raise Exception('failed to decode: %s. Details: %s'%(attribute_dict_string, e))
 
         return attributes_dict
-
-
-        
-        
