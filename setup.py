@@ -15,7 +15,6 @@ setup(name='hamlpy',
           'django',
           'pygments',
           'markdown',
-          'coffeescript',
       ],
       entry_points = {
           'console_scripts' : ['hamlpy = hamlpy.hamlpy:convert_files',

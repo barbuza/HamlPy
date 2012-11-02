@@ -10,7 +10,9 @@ from pygments.lexers import guess_lexer
 
 from markdown import markdown
 
-import coffeescript
+import subprocess
+import json
+
 
 ELEMENT = '%'
 ID = '#'
@@ -28,6 +30,7 @@ INLINE_VARIABLE = re.compile(r'(?<!\\)([#=]\{\s*(.+?)\s*\})')
 ESCAPED_INLINE_VARIABLE = re.compile(r'\\([#=]\{\s*(.+?)\s*\})')
 
 COFFEESCRIPT_FILTERS = [':coffeescript', ':coffee']
+BARE_COFFEESCRIPT_FILTERS = [':coffeescript-bare', ':coffee-bare']
 JAVASCRIPT_FILTER = ':javascript'
 CSS_FILTER = ':css'
 STYLUS_FILTER = ':stylus'
@@ -36,6 +39,8 @@ PYTHON_FILTER = ':python'
 MARKDOWN_FILTER = ':markdown'
 CDATA_FILTER = ':cdata'
 PYGMENTS_FILTER = ':highlight'
+SASS_FILTER = ':sass'
+SCSS_FILTER = ':scss'
 
 ELEMENT_CHARACTERS = (ELEMENT, ID, CLASS)
 
@@ -80,7 +85,16 @@ def create_node(haml_line):
     
     if stripped_line in COFFEESCRIPT_FILTERS:
         return CoffeeScriptFilterNode(haml_line)
-        
+
+    if stripped_line in BARE_COFFEESCRIPT_FILTERS:
+        return BareCoffeeScriptFilterNode(haml_line)
+
+    if stripped_line == SASS_FILTER:
+        return SassFilterNode(haml_line)
+
+    if stripped_line == SCSS_FILTER:
+        return ScssFilterNode(haml_line)
+
     if stripped_line == CSS_FILTER:
         return CssFilterNode(haml_line)
     
@@ -399,7 +413,12 @@ class VariableNode(ElementNode):
     
     def _render(self):
         tag_content = self.haml.lstrip(VARIABLE)
-        self.before = "%s%s" % (self.spaces, self._render_inline_content(tag_content))
+        templatetag_match = re.match(r"^(?P<tagname>\w+)\((?P<arguments>.+?)\)$", tag_content.strip())
+        if templatetag_match:
+            groupdict = templatetag_match.groupdict()
+            self.before = "%s{%% %s %s %%}" % (self.spaces, groupdict.get("tagname"), groupdict.get("arguments"))
+        else:
+            self.before = "%s%s" % (self.spaces, self._render_inline_content(tag_content))
         self.after = self.render_newlines()
 
     def _post_render(self):
@@ -519,13 +538,51 @@ class JavascriptFilterNode(FilterNode):
         self.after = '// ]]>\n</script>\n'
         self._render_children_as_plain_text(remove_indentation=False)
 
-class CoffeeScriptFilterNode(FilterNode):
+
+class CompilerNode(FilterNode):
+
+    def _compile(self, args, data):
+        proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                      stdin=subprocess.PIPE)
+        return proc.communicate(data)
+
+
+class CoffeeScriptFilterNode(CompilerNode):
+
+    args = ["coffee", "-sc"]
+
     def _render(self):
         indent_offset = len(self.children[0].spaces)
         code = "\n".join([node.raw_haml[indent_offset:] for node in self.children]) + '\n'
-        js = coffeescript.compile(code)
+        js, err = self._compile(self.args, code)
+        if err:
+            js = "alert(%s)" % json.dumps(str(err))
         self.before = '<script type=\'text/javascript\'>\n// <![CDATA[%s%s' % (self.render_newlines(), js)
         self.after = '// ]]>\n</script>\n'
+
+
+class BareCoffeeScriptFilterNode(CoffeeScriptFilterNode):
+
+    args = ["coffee", "-scb"]
+
+
+class SassFilterNode(CompilerNode):
+
+    cmd = "sass"
+
+    def _render(self):
+        indent_offset = len(self.children[0].spaces)
+        code = "\n".join([node.raw_haml[indent_offset:] for node in self.children]) + '\n'
+        css, err = self._compile([self.cmd, "-s", "--compass"], code)
+        if err:
+            css = "body:before{content:%s}" % json.dumps(err)
+        self.before = '<style type=\'text/css\'>\n/*<![CDATA[*/%s%s' % (self.render_newlines(), css)
+        self.after = '/*]]>*/\n</style>\n'
+
+
+class ScssFilterNode(SassFilterNode):
+    cmd = "scss"
+
 
 class CssFilterNode(FilterNode):
     def _render(self):
