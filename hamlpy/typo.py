@@ -66,14 +66,17 @@ general_substitutions = (
     (r"\s-\s*",
      "&nbsp;&mdash; "),
 
-     (ur"\s*-\s",
-      "&nbsp;&mdash; "),
+    (ur"\s*-\s",
+     "&nbsp;&mdash; "),
 
-     (r"\.{3,}",
-      "&hellip;"),
+    (r"(\(?\$?\w+)-(\w+\)?)",
+     "<span class='typo-nowrap'>\\1-\\2</span>"),
 
-     (r"\.\.",
-      "."),
+    (r"\.{3,}",
+     "&hellip;"),
+
+    (r"\.\.",
+     "."),
 
 )
 
