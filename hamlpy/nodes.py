@@ -13,6 +13,8 @@ from markdown import markdown
 import subprocess
 import json
 
+import typo
+
 
 ELEMENT = '%'
 ID = '#'
@@ -115,6 +117,9 @@ def create_node(haml_line):
 
     if stripped_line == MARKDOWN_FILTER:
         return MarkdownFilterNode(haml_line)
+
+    if stripped_line.startswith("~ "):
+        return TypoNode(haml_line)
 
     return PlaintextNode(haml_line)
 
@@ -537,6 +542,20 @@ class JavascriptFilterNode(FilterNode):
         self.before = '<script type=\'text/javascript\'>\n// <![CDATA[%s' % (self.render_newlines())
         self.after = '// ]]>\n</script>\n'
         self._render_children_as_plain_text(remove_indentation=False)
+
+
+class TypoNode(HamlNode):
+
+    def _render(self):
+        texts = [self.haml[1:]]
+        for child in self.children:
+            if not isinstance(child, PlaintextNode):
+                raise RuntimeError("can only nest plain text into typo")
+            texts.append(child.haml)
+        text = " ".join(texts)
+        self.before = "%s%s" % (self.spaces, typo.typo(text))
+        self.after = self.render_newlines()
+
 
 
 class CompilerNode(FilterNode):
