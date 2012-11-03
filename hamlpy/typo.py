@@ -17,8 +17,15 @@ prepositions = map(unicode.strip, u"""
     из-под, из-за, несмотря на, в отличие от, в связи с
 """.strip().split(","))
 
-compound_prepositions = set(filter(lambda prep: " " in prep, prepositions))
-simple_prepositions = set(filter(lambda prep: " " not in prep, prepositions))
+def doublecase(items):
+    result = []
+    for item in items:
+        result.append(item)
+        result.append(item[0].upper() + item[1:])
+    return result
+
+compound_prepositions = doublecase(set(filter(lambda prep: " " in prep, prepositions)))
+simple_prepositions = doublecase(set(filter(lambda prep: " " not in prep, prepositions)))
 
 dashes = map(unichr, range(0x2010, 0x2016))
 
@@ -49,6 +56,9 @@ general_substitutions = (
 
     (r"([\.\,\!\?\:\;])([^\s\.])",
      "\\1 \\2"),
+
+    (ur"(\d{4})\s?(гг?)(?:\.|\b)",
+     "\\1&nbsp;\\2."),
 
     (r"(?<=[\d$])\s(?=\d)",
      "&nbsp;"),
