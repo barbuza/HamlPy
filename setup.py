@@ -15,6 +15,7 @@ setup(name='hamlpy',
           'django',
           'pygments',
           'markdown',
+          'html5lib',
       ],
       entry_points = {
           'console_scripts' : ['hamlpy = hamlpy.hamlpy:convert_files',
