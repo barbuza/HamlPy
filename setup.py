@@ -16,6 +16,7 @@ setup(name='hamlpy',
           'pygments',
           'markdown',
           'html5lib',
+          'colorama',
       ],
       entry_points = {
           'console_scripts' : ['hamlpy = hamlpy.hamlpy:convert_files',
