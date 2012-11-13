@@ -108,7 +108,7 @@ general_substitutions = (
     (ur"(?<=\d)\s(?=\w{1,3}\.)", u"\u00a0"),
 
     # add some glue
-    (ur"(?<=\w)-(?=\w)", u"\u2060-\u2060"),
+    # (ur"(?<=\w)-(?=\w)", u"\u2060-\u2060"),
 
 )
 
