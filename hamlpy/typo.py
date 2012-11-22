@@ -135,7 +135,7 @@ else:
 
 
 def typo(data):
-    if not isinstance(data, unicode):
+    if data and not isinstance(data, unicode):
         raise RuntimeError("`typo` requires unicode")
 
     # prepare input - remove html entities and replace
@@ -209,8 +209,8 @@ class TypoWalker(object):
 
 
 def typo_html(data, out=None):
-    if not isinstance(data, unicode):
-        raise RuntimeError("`typo_html` requires unicod")
+    if data and not isinstance(data, unicode):
+        raise RuntimeError("`typo_html` requires unicode")
     return_value = False
     if not out:
         out = cStringIO.StringIO()
